@@ -14,7 +14,9 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         if ($request->ajax()) {
-            $products = Product::with(['category', 'brand'])->latest();
+            $products = Product::with(['category', 'brand'])
+                ->where('is_featured', false)  // ⛔️ exclude featured
+                ->latest();
 
             return DataTables::of($products)
                 ->addIndexColumn()
@@ -184,5 +186,45 @@ class ProductController extends Controller
         }
 
         return response()->json(['message' => 'Selected products deleted successfully.']);
+    }
+
+    // ✅ Save Featured (additive only)
+
+    public function saveFeatured(Request $request)
+    {
+        $ids = $request->input('featured_ids');
+
+        if (!is_array($ids) || empty($ids)) {
+            return response()->json(['message' => 'No products selected.'], 400);
+        }
+
+        Product::whereIn('id', $ids)->update(['is_featured' => true]);
+
+        return response()->json(['message' => 'Selected products featured successfully.']);
+    }
+
+    // ✅ Unfeature (remove manually)
+    public function unfeature(Request $request)
+    {
+        $product = Product::find($request->id);
+
+        if (!$product) {
+            return response()->json(['message' => 'Product not found.'], 404);
+        }
+
+        $product->is_featured = false;
+        $product->save();
+
+        return response()->json(['message' => 'Product removed from featured list.']);
+    }
+
+    public function featuredProducts()
+    {
+        $products = Product::with(['category', 'brand'])
+            ->where('is_featured', true)  // ✅ only featured
+            ->latest()
+            ->get();
+
+        return view('admin.products.featured', compact('products'));
     }
 }

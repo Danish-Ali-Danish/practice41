@@ -5,15 +5,21 @@
 <div class="container dashboard-card">
     <h2>Product List</h2>
     <div class="d-flex justify-content-end mb-3">
-        <button class="btn btn-primary" id="addProductBtn">
+        <button class="btn btn-primary me-2" id="addProductBtn">
             <i class="fas fa-plus-circle me-1"></i> Add Products
         </button>
-    </div>
-    <div class="table-responsive">
-        <button id="bulkDeleteBtn" class="btn btn-danger mb-2 d-none">
+        <a href="{{ route('products.featured') }}" class="btn btn-outline-success me-2">
+            <i class="fas fa-star me-1"></i> View Featured Products
+        </a>
+        <button class="btn btn-warning d-none me-2" id="saveFeaturedProducts">
+            <i class="fas fa-save me-1"></i> Save Featured
+        </button>
+        <button class="btn btn-danger d-none" id="bulkDeleteBtn">
             <i class="fas fa-trash-alt me-1"></i> Delete Selected
         </button>
+    </div>
 
+    <div class="table-responsive">
         <table id="productTable" class="table table-striped table-hover w-100">
             <thead class="table-dark">
                 <tr>
@@ -23,6 +29,7 @@
                     <th>Category</th>
                     <th>Brand</th>
                     <th>Price</th>
+                    <th>Featured</th>
                     <th>Image</th>
                     <th class="text-center">Actions</th>
                 </tr>
@@ -57,10 +64,8 @@
 <script>
 $(document).ready(function () {
     $.ajaxSetup({
-    headers: {
-        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-    }
-});
+        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+    });
 
     const productModal = new bootstrap.Modal($('#productModal')[0]);
     const productForm = $('#productForm');
@@ -83,11 +88,19 @@ $(document).ready(function () {
             { data: 'brand.name', name: 'brand.name' },
             { data: 'price', name: 'price' },
             {
-                data: 'image',
-                name: 'image',
+                data: 'is_featured',
                 orderable: false,
                 searchable: false,
-                render: image => image ? `<img src="/storage/${image}" class="img-thumbnail file-preview" width="50" height="50" style="object-fit:cover;cursor:pointer" data-src="/storage/${image}">` : 'No Image'
+                render: (is_featured, type, row) =>
+                    `<input type="checkbox" class="feature-checkbox" value="${row.id}" ${is_featured ? 'checked' : ''}>`
+            },
+            {
+                data: 'image',
+                orderable: false,
+                searchable: false,
+                render: image => image ?
+                    `<img src="/storage/${image}" class="img-thumbnail file-preview" width="50" height="50" style="object-fit:cover;cursor:pointer" data-src="/storage/${image}">`
+                    : 'No Image'
             },
             { data: 'action', name: 'action', orderable: false, searchable: false, className: 'text-center' }
         ],
@@ -96,14 +109,17 @@ $(document).ready(function () {
 
     $(document).on('change', '#selectAllProducts', function () {
         $('.product-checkbox').prop('checked', this.checked);
-        toggleBulkDeleteButton();
+        toggleButtons();
     });
 
-    $(document).on('change', '.product-checkbox', toggleBulkDeleteButton);
+    $(document).on('change', '.product-checkbox, .feature-checkbox', toggleButtons);
 
-    function toggleBulkDeleteButton() {
+    function toggleButtons() {
         const selectedCount = $('.product-checkbox:checked').length;
+        const featuredCount = $('.feature-checkbox:checked').length;
+
         $('#bulkDeleteBtn').toggleClass('d-none', selectedCount === 0);
+        $('#saveFeaturedProducts').toggleClass('d-none', featuredCount === 0);
     }
 
     $('#bulkDeleteBtn').on('click', function () {
@@ -111,7 +127,7 @@ $(document).ready(function () {
             return $(this).val();
         }).get();
 
-        if (ids.length === 0) return;
+        if (!ids.length) return;
 
         Swal.fire({
             title: 'Are you sure?',
@@ -122,22 +138,35 @@ $(document).ready(function () {
             confirmButtonText: 'Yes, delete them!'
         }).then(result => {
             if (result.isConfirmed) {
-                $.ajax({
-                    url: '{{ route("products.bulkDelete") }}',
-                    method: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        ids: ids
-                    },
-                    success: () => {
-                        showAlert('Selected products deleted successfully!');
-                        productTable.ajax.reload();
-                        $('#selectAllProducts').prop('checked', false);
-                        $('#bulkDeleteBtn').addClass('d-none');
-                    },
-                    error: () => showAlert('Failed to delete selected products.', 'error')
-                });
+                $.post('{{ route("products.bulkDelete") }}', { ids }, function () {
+                    showAlert('Selected products deleted successfully!');
+                    productTable.ajax.reload();
+                    $('#selectAllProducts').prop('checked', false);
+                    $('#bulkDeleteBtn').addClass('d-none');
+                }).fail(() => showAlert('Failed to delete products.', 'error'));
             }
+        });
+    });
+
+    $('#saveFeaturedProducts').on('click', function () {
+        let selectedIds = $('.feature-checkbox:checked').map(function () {
+            return $(this).val();
+        }).get();
+
+        if (selectedIds.length === 0) {
+            Swal.fire('No selection', 'Please select at least one product.', 'warning');
+            return;
+        }
+
+        $.post('{{ route("products.saveFeatured") }}', {
+            _token: '{{ csrf_token() }}',
+            featured_ids: selectedIds
+        }, function (res) {
+            Swal.fire('Success!', res.message, 'success').then(() => {
+                productTable.ajax.reload();
+            });
+        }).fail(() => {
+            Swal.fire('Error', 'Failed to update featured products.', 'error');
         });
     });
 
@@ -154,17 +183,15 @@ $(document).ready(function () {
         const formData = new FormData(productForm[0]);
         const url = id ? `/products/${id}` : `{{ route('products.store') }}`;
 
-        if (id) {
-            formData.append('_method', 'PUT');
-        }
+        if (id) formData.append('_method', 'PUT');
 
         $.ajax({
-            url: url,
+            url,
             method: 'POST',
             data: formData,
             contentType: false,
             processData: false,
-            success: function () {
+            success: () => {
                 showAlert(`Product ${id ? 'updated' : 'added'} successfully!`);
                 productModal.hide();
                 productForm[0].reset();
@@ -175,12 +202,12 @@ $(document).ready(function () {
             error: function (xhr) {
                 if (xhr.status === 422) {
                     let errorHtml = '';
-                    $.each(xhr.responseJSON.errors, function (key, messages) {
+                    $.each(xhr.responseJSON.errors, (key, messages) => {
                         errorHtml += `<div>${messages.join('<br>')}</div>`;
                     });
                     showAlert(errorHtml, 'error');
                 } else {
-                    showAlert('An unexpected error occurred.', 'error');
+                    showAlert('Unexpected error occurred.', 'error');
                 }
             }
         });
@@ -200,7 +227,7 @@ $(document).ready(function () {
 
             $('#productModalLabel').text('Edit Product');
             productModal.show();
-        }).fail(() => showAlert('Failed to load product data.', 'error'));
+        }).fail(() => showAlert('Failed to load product.', 'error'));
     });
 
     $(document).on('click', '.delete-btn', function () {
@@ -213,9 +240,8 @@ $(document).ready(function () {
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
             confirmButtonText: 'Yes, delete it!'
-        }).then((result) => {
+        }).then(result => {
             if (result.isConfirmed) {
                 $.ajax({
                     url: `/products/${productId}`,
@@ -224,13 +250,11 @@ $(document).ready(function () {
                         _method: 'DELETE',
                         _token: '{{ csrf_token() }}'
                     },
-                    success: function () {
-                        showAlert('Product deleted successfully!', 'success');
+                    success: () => {
+                        showAlert('Product deleted successfully!');
                         productTable.ajax.reload();
                     },
-                    error: function () {
-                        showAlert('Failed to delete product.', 'error');
-                    }
+                    error: () => showAlert('Failed to delete product.', 'error')
                 });
             }
         });
@@ -246,7 +270,7 @@ $(document).ready(function () {
             icon: type,
             title: type.charAt(0).toUpperCase() + type.slice(1),
             html: message,
-            timer: 4000,
+            timer: 3000,
             timerProgressBar: true,
             toast: true,
             position: 'top-end',

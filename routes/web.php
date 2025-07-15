@@ -80,6 +80,12 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('categories', CategoryController::class);
     Route::resource('products', ProductController::class);
     Route::post('products/bulk-delete', [ProductController::class, 'bulkDelete'])->name('products.bulkDelete');
+    // Featured Products Logic
+    Route::post('/products/save-featured', [ProductController::class, 'saveFeatured'])->name('products.saveFeatured');
+    Route::prefix('admin')->group(function () {
+        Route::get('/products/featured', [ProductController::class, 'featuredProducts'])->name('products.featured');
+    });
+    Route::post('/products/unfeature', [ProductController::class, 'unfeature'])->name('products.unfeature');
 
     // ... other routes ...
     // 🛍️ Frontend User Routes (Protected)

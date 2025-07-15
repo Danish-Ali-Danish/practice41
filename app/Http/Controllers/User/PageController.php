@@ -19,6 +19,12 @@ class PageController extends Controller
     {
         $query = Product::query();
 
+        // ✅ Show only featured products if filter is set
+        if ($request->filter === 'featured') {
+            $query->where('is_featured', true);
+        }
+
+        // Existing filters
         if ($request->search) {
             $query->where('name', 'like', '%' . $request->search . '%');
         }

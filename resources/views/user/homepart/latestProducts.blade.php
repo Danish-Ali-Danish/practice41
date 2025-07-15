@@ -9,7 +9,7 @@
                     <div class="card h-100 shadow-sm text-center">
                         <div class="overflow-hidden">
                             <img src="{{ asset('storage/' . ($product->image ?? 'images/default-product.png')) }}"
-                                 class="card-img-top img-fluid rounded product-hover"
+                                 class="card-img-top img-fluid rounded product-hover "
                                  style="height: 120px; object-fit: cover; transition: transform 0.3s;" loading="lazy">
                         </div>
                         <div class="card-body p-2">

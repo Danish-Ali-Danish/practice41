@@ -1,13 +1,15 @@
 <form class="position-relative w-100" autocomplete="off">
     <div class="input-group input-group-lg">
-        <input type="text" id="global-search" class="form-control rounded-start-pill"
+        <input type="text" id="global-search" class="form-control rounded-start-pill shadow-sm"
                placeholder="Search products, categories...">
         <button class="btn btn-primary rounded-end-pill" type="submit">
             <i class="fas fa-search"></i>
         </button>
     </div>
-    <div id="search-results" class="dropdown-menu show w-100 mt-2 shadow-sm rounded"
-         style="display: none; max-height: 350px; overflow-y: auto;"></div>
+    <div id="search-results"
+         class="dropdown-menu w-100 mt-2 shadow rounded show"
+         style="display: none; max-height: 350px; overflow-y: auto; z-index: 1000;">
+    </div>
 </form>
 
 @push('scripts')

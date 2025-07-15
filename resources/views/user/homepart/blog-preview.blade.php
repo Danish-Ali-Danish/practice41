@@ -9,7 +9,7 @@
                 <div class="col-md-4">
                     <div class="card h-100 shadow-sm border-0">
                         @if($post->image)
-                            <img src="{{ asset('storage/' . $post->image) }}" class="card-img-top" alt="{{ $post->title }} "
+                            <img src="{{ asset('storage/' . $post->image) }}" class="card-img-top " alt="{{ $post->title }} "
                                 style="height: 200px; object-fit: cover;" loading="lazy">
                         @endif
                         <div class="card-body">
