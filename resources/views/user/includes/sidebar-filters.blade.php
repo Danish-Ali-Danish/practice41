@@ -8,6 +8,12 @@
     </div>
     <div id="categoryCollapse" class="collapse show">
         <div class="card-body scrollable-list">
+        @if($brandMessage)
+            <div class="alert alert-warning py-1 px-2 small mb-2">
+                {{ $brandMessage }}
+            </div>
+        @endif
+
             @foreach ($categories as $category)
                 <div class="form-check">
                     <input class="form-check-input filter-checkbox" type="checkbox" name="category[]" value="{{ $category->id }}"
@@ -18,7 +24,6 @@
         </div>
     </div>
 </div>
-
 <!-- Brands -->
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -27,15 +32,11 @@
             <i class="fas fa-chevron-down"></i>
         </button>
     </div>
+
     <div id="brandCollapse" class="collapse show">
-        <div class="card-body scrollable-list">
-            @foreach ($brands as $brand)
-                <div class="form-check">
-                    <input class="form-check-input filter-checkbox" type="checkbox" name="brand[]" value="{{ $brand->id }}"
-                        {{ is_array(request('brand')) && in_array($brand->id, request('brand')) ? 'checked' : '' }}>
-                    <label class="form-check-label">{{ $brand->name }}</label>
-                </div>
-            @endforeach
+        <div class="card-body scrollable-list" id="brandFilters">
+            {{-- Brand checkboxes will be loaded here --}}
+            @include('user.includes.partial-brand-filter', ['brands' => $brands, 'brandMessage' => $brandMessage ?? null])
         </div>
     </div>
 </div>

@@ -122,4 +122,24 @@ class BrandController extends Controller
             ], 409);
         }
     }
+
+    public function savePopular(Request $request)
+    {
+        // Validate input
+        $brandIds = $request->input('brand_ids', []);
+
+        if (!is_array($brandIds)) {
+            return response()->json(['message' => 'Invalid data format.'], 422);
+        }
+
+        // Reset all to false
+        Brand::query()->update(['is_popular' => false]);
+
+        // Set selected to true
+        if (count($brandIds) > 0) {
+            Brand::whereIn('id', $brandIds)->update(['is_popular' => true]);
+        }
+
+        return response()->json(['message' => 'Popular brands updated.']);
+    }
 }

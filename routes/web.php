@@ -77,6 +77,8 @@ Route::middleware(['auth'])->group(function () {
     // 🛠️ Admin Routes
     // =====================
     Route::resource('brands', BrandController::class);
+    Route::post('/brands/save-popular', [BrandController::class, 'savePopular'])->name('brands.savePopular');
+
     Route::resource('categories', CategoryController::class);
     Route::resource('products', ProductController::class);
     Route::post('products/bulk-delete', [ProductController::class, 'bulkDelete'])->name('products.bulkDelete');
@@ -93,6 +95,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/home', [HomeController::class, 'index'])->name('home');
     Route::get('/allproducts', action: [PageController::class, 'allproducts'])->name('allproducts');
+    Route::get('/get-brands-by-categories', [PageController::class, 'getBrandsByCategories'])->name('get.brands.by.categories');
+
     Route::get('/product/{id}', [PageController::class, 'productDetails'])->name('product.details');
     Route::get('/cart', [PageController::class, 'cart'])->name('cart');
     Route::get('/checkout', [PageController::class, 'checkout'])->name('checkout');

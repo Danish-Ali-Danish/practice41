@@ -15,66 +15,64 @@ class PageController extends Controller
         return view('user.home');
     }
 
-    public function allproducts(Request $request)
+    public function allProducts(Request $request)
     {
-        $query = Product::query();
+        $query = Product::with('brand', 'category');
 
-        // ✅ Show only featured products if filter is set
-        if ($request->filter === 'featured') {
+        if ($request->has('category')) {
+            $query->whereIn('category_id', $request->category);
+        }
+
+        if ($request->has('brand')) {
+            $query->whereIn('brand_id', $request->brand);
+        }
+
+        if ($request->has('filter') && $request->filter === 'featured') {
             $query->where('is_featured', true);
         }
 
-        // Existing filters
-        if ($request->search) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+        $products = $query->paginate(20);
+
+        $popularBrands = Brand::withCount('products')
+            ->has('products')
+            ->orderByDesc('products_count')
+            ->take(6)
+            ->get();
+
+        $categories = Category::withCount('products')->get();
+
+        // Filter brands that have products in selected categories
+        if ($request->has('category')) {
+            $brands = Brand::whereHas('products', function ($q) use ($request) {
+                $q->whereIn('category_id', $request->category);
+            })->get();
+            $brandMessage = null;
+        } else {
+            // Fallback popular brands if no category selected
+            $brands = Brand::has('products')->inRandomOrder()->take(10)->get();
+            $brandMessage = 'Showing popular brands. Select a category to filter more brands.';
         }
 
-        if ($request->category) {
-            $query->where('category_id', $request->category);
+        // If AJAX call is for brand filters only (no full reload)
+        if ($request->ajax() && $request->has('brand_only')) {
+            return view('user.includes.partial-brand-filter', compact('brands', 'brandMessage'))->render();
         }
 
-        if ($request->brand) {
-            $query->where('brand_id', $request->brand);
-        }
-
-        if ($request->min_price) {
-            $query->where('price', '>=', $request->min_price);
-        }
-
-        if ($request->max_price) {
-            $query->where('price', '<=', $request->max_price);
-        }
-
-        switch ($request->sort) {
-            case 'price_asc':
-                $query->orderBy('price', 'asc');
-                break;
-            case 'price_desc':
-                $query->orderBy('price', 'desc');
-                break;
-            case 'name_asc':
-                $query->orderBy('name', 'asc');
-                break;
-            case 'name_desc':
-                $query->orderBy('name', 'desc');
-                break;
-            default:
-                $query->latest();
-        }
-
-        $products = $query->paginate(12)->withQueryString();
-        $categories = Category::all();
-        $brands = Brand::all();
-
-        return view('user.allproducts', compact('products', 'categories', 'brands'));
+        return view('user.allproducts', compact(
+            'products',
+            'categories',
+            'brands',
+            'brandMessage',
+            'popularBrands'
+        ));
     }
 
     public function productDetails($id)
     {
         $product = Product::with('reviews')->findOrFail($id);
         $categories = Category::withCount('products')->get();
+        $Products = Product::latest()->take(5)->get();
 
-        $Products = Product::latest()->take(5)->get();  // 👈 Featured products
         $relatedProducts = Product::where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
             ->take(10)

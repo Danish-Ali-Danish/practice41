@@ -6,9 +6,12 @@
 
     <div id="alertContainer"></div>
 
-    <div class="d-flex justify-content-end mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <button class="btn btn-primary" id="addBrandBtn">
             <i class="fas fa-plus-circle me-1"></i> Add Brand
+        </button>
+        <button class="btn btn-success" id="savePopularBrandsBtn">
+            <i class="fas fa-star me-1"></i> Save Popular Brands
         </button>
     </div>
 
@@ -20,6 +23,7 @@
                     <th>Name</th>
                     <th>Category</th>
                     <th>Image</th>
+                    <th>Popular</th>
                     <th class="text-center">Actions</th>
                 </tr>
             </thead>
@@ -69,25 +73,21 @@ $(document).ready(function () {
         responsive: true,
         ajax: '{{ route("brands.index") }}',
         columns: [
-    { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
-    { data: 'name', name: 'name' },
-    { data: 'category.name', name: 'category.name' },
-    { 
-        data: 'file_path', 
-        name: 'file_path', 
-        orderable: false, 
-        searchable: false 
-        // ✅ Don't add any render() function here!
-    },
-    { 
-        data: 'action', 
-        name: 'action', 
-        orderable: false, 
-        searchable: false, 
-        className: 'text-center' 
-    }
-]
-
+            { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
+            { data: 'name', name: 'name' },
+            { data: 'category.name', name: 'category.name' },
+            { data: 'file_path', name: 'file_path', orderable: false, searchable: false },
+            {
+                data: 'is_popular',
+                name: 'is_popular',
+                orderable: false,
+                searchable: false,
+                render: function(data, type, row) {
+                    return `<input type="checkbox" class="popular-checkbox" data-id="${row.id}" ${data ? 'checked' : ''}>`;
+                }
+            },
+            { data: 'action', name: 'action', orderable: false, searchable: false, className: 'text-center' }
+        ]
     });
 
     function showAlert(message, type = 'success') {
@@ -151,6 +151,27 @@ $(document).ready(function () {
                 } else {
                     showAlert('Failed to save brand.', 'error');
                 }
+            }
+        });
+    });
+
+    $('#savePopularBrandsBtn').on('click', function () {
+        const selectedIds = $('.popular-checkbox:checked').map(function () {
+            return $(this).data('id');
+        }).get();
+
+        $.ajax({
+            url: '{{ route("brands.savePopular") }}',
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                brand_ids: selectedIds
+            },
+            success: function () {
+                showAlert('Popular brands updated successfully!');
+            },
+            error: function () {
+                showAlert('Failed to update popular brands.', 'error');
             }
         });
     });
